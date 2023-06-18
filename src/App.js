@@ -1,4 +1,3 @@
-import logo from "./logo.svg";
 import "./App.css";
 import React from "react";
 import BlockchainExplorer from "./components/blockexplorer";
@@ -8,26 +7,16 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 
 function App() {
   return (
-    // <div className='App'>
-    //   <header className='App-header'>
-    //     {/* <img src={logo} className='App-logo' alt='logo' /> */}
-    //     <BlockchainExplorer></BlockchainExplorer>
-    //   </header>
-    // </div>
-
     <Router>
-      {/* <div className='App-header'> */}
-      <div>
-        {/* <Header /> */}
+      <div className='App'>
         <Navbar />
-        <div className='App-header'>
+        <div>
           <Routes>
             <Route exact path='/' element={<BlockchainExplorer />} />
             <Route path='/block/:hash' element={<BlockDetails />} />
           </Routes>
         </div>
       </div>
-      {/* <Footer /> */}
     </Router>
   );
 }

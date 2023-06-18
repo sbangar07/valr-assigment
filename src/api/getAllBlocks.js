@@ -8,6 +8,7 @@ const GetAllBlocks = () => {
   const [isPending, setIsPending] = useState(true);
   const [error, setError] = useState(null);
   const [titles, setTiltles] = useState([]);
+  const [usdPrice, setUsdPrice] = useState("");
 
   useEffect(() => {
     async function fetchBlocksData() {
@@ -25,8 +26,7 @@ const GetAllBlocks = () => {
             if (keyA < keyB) return 1;
             return 0;
           });
-          const blockData = results.slice(0, 5).map((record) => {
-            debugger;
+          const blockData = results.slice(0, 15).map((record) => {
             const mineTime = moment(new Date(1686985545000))
               .fromNow()
               .replace("ago", "");
@@ -37,52 +37,72 @@ const GetAllBlocks = () => {
             fetchBlocksSizes(blockData);
           }, 3000);
         } else {
-          setError("Error while fetching the details from API");
+          setError("Error while fetching the block details");
         }
       } catch (err) {
-        setError(err.message);
-        setIsPending(false);
-        console.log(err);
+        setError("Error while fetching the block details");
+        console.error("Error fetching data:", error);
       }
     }
+
+    const getMinerDetails = async (blockData) => {
+      try {
+        const url = process.env.REACT_APP_MINER_DATA_FILE_PATH;
+        await Promise.all(
+          blockData.map(async (block) => {
+            const response = await axios(url);
+            const results = await response.data.payout_addresses;
+            const propertyExists = results.hasOwnProperty(block.Miner);
+            if (propertyExists) {
+              block.Miner = results[block.Miner].name;
+            } else {
+              block.Miner = "Unknown";
+            }
+          })
+        );
+        getUsdPriceOfBitcon(blockData);
+        setIsPending(false);
+      } catch (error) {
+        setIsPending(false);
+        console.error("Error fetching data:", error);
+        return;
+      }
+    };
+
+    const getUsdPriceOfBitcon = async (blockData) => {
+      try {
+        const url = process.env.REACT_APP_EXCHANGE_RATE_API;
+        const response = await axios(url);
+        const results = response.data;
+        setUsdPrice(`$  ${results["USD"]["15m"].toLocaleString("en-US")}`);
+        setData(blockData);
+        setIsPending(false);
+      } catch (error) {
+        setIsPending(false);
+        console.error("Error fetching data:", error);
+        return;
+      }
+    };
 
     const fetchBlocksSizes = async (resultData) => {
       try {
         if (resultData.length > 0) {
-          const baseUrl = process.env.REACT_APP_SINGLE_BLOCK_API;
-          const apiBaseURL = "https://blockchain.info/rawblock/";
-
-          //   const updatedData = await Promise.all(
-          //     resultData.map(async (blockSize) => {
-          //       const url = baseUrl + blockSize.Hash;
-          //       const response = await axios(url);
-          //       const blockresponse = await response.data;
-          //       const result = blockresponse.data?.[blockSize.Hash]?.decoded_raw_block;
-          //       if (result.size) {
-          //         blockSize.Size = result.size.toLocaleString("en-US") + " bytes";
-          //       }
-          //       return blockSize;
-          //     })
-          //   );
-          //  setData(updatedData);
-
+          const apiBaseURL = process.env.REACT_APP_SINGLE_BLOCK_API;
           await Promise.all(
             resultData.map(async (blockSize) => {
               const url = apiBaseURL + blockSize.Hash;
               const response = await axios(url);
               const results = await response.data;
-              //   results.tx = [];
+              blockSize.Miner = results.tx[0].out[0].addr;
               blockSize.Size = results.size.toLocaleString("en-US") + " bytes";
             })
           );
-          debugger;
-          setData(resultData);
-          setIsPending(false);
+          getMinerDetails(resultData);
         }
       } catch (err) {
         setError(err.message);
         setIsPending(false);
-        console.log(err);
+        console.error("Error fetching data:", error);
       }
     };
 
@@ -93,9 +113,9 @@ const GetAllBlocks = () => {
     return () => {
       clearTimeout(fetchDataTimer);
     };
-  }, []);
+  }, [error]);
 
-  return { data, titles, isPending, error };
+  return { data, titles, usdPrice, isPending, error };
 };
 
 export default GetAllBlocks;
